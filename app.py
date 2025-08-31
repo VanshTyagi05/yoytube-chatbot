@@ -11,6 +11,8 @@ from langchain_core.output_parsers import StrOutputParser
 # ---------- Functions ----------
 
 from urllib.parse import urlparse, parse_qs
+import os
+from dotenv import load_dotenv
 
 def get_video_id(url: str) -> str:
     parsed_url = urlparse(url)
@@ -25,7 +27,7 @@ def fetch_transcript(video_id: str) -> str:
     try:
         ytt_api = YouTubeTranscriptApi()
         transcript_list_object = ytt_api.list(video_id)
-        transcript_obj = transcript_list_object.find_transcript(['en', 'de']) 
+        transcript_obj = transcript_list_object.find_transcript(['en', 'de','hi']) 
         transcript_list = transcript_obj.fetch() ##print(transcript_list) # Flatten it to plain text
         transcript = " ".join(chunk.text for chunk in transcript_list) ##print(transcript)
         return transcript
@@ -49,9 +51,14 @@ def build_chain(vector_store):
     """Build main RAG chain."""
     retriever = vector_store.as_retriever(search_type="similarity", search_kwargs={"k": 4})
 
+    load_dotenv()
+    api_key = os.getenv("HUGGINGFACEHUB_API_TOKEN")
+    if not api_key:
+        raise ValueError("HUGGINGFACEHUB_API_TOKEN not found in .env file.")
+
     llm = HuggingFaceEndpoint(
         repo_id="google/gemma-2-2b-it",
-        huggingfacehub_api_token="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",   # safer than hardcoding
+        huggingfacehub_api_token=api_key,
         task="text-generation"
     )
     model = ChatHuggingFace(llm=llm)
